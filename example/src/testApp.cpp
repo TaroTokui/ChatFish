@@ -18,6 +18,10 @@ void testApp::setup() {
 	angle = 0;
 	kinect.setCameraTiltAngle(angle);
     
+    // 有効深度の初期化
+    nearThreshold = DEFAULT_NEAR;
+    farThreshold = DEFAULT_FAR;
+    
 }
 
 //--------------------------------------------------------------
@@ -27,6 +31,28 @@ void testApp::update() {
 	
 	kinect.update();
     
+	// there is a new frame and we are connected
+	if(kinect.isFrameNew()) {
+		
+		// load grayscale depth image from the kinect source
+		grayImage.setFromPixels(kinect.getDepthPixels(), kinect.width, kinect.height);
+            
+        // 有効深度内の画像を切り出す
+        fsPixels = grayImage.getPixels();
+        int width = kinect.width;
+        int height = kinect.height;
+        for (int j=0; j<height; j++) {
+            for (int i=0; i<width; i++) {
+                // 有効深度外の画素を0にする
+                if( nearThreshold < fsPixels[i+j*width] || fsPixels[i+j*width] < farThreshold){
+                    fsPixels[i+j*width] = 0;
+                }
+            }
+        }
+    }
+    
+    // update the cv images
+    grayImage.flagImageChanged();
 }
 
 //--------------------------------------------------------------
@@ -35,8 +61,9 @@ void testApp::draw() {
 	ofSetColor(255, 255, 255);
 	
     // draw from the live kinect
-    kinect.drawDepth(0, 0);
-    
+//    kinect.drawDepth(0, 0);
+
+    grayImage.draw(0, 0);
 }
 
 //--------------------------------------------------------------
@@ -62,7 +89,23 @@ void testApp::keyPressed (int key) {
 			kinect.setCameraTiltAngle(0); // zero the tilt
 			kinect.close();
 			break;
+            
+        case 'n':
+            nearThreshold++;
+            break;
 			
+        case 'N':
+            nearThreshold--;
+            break;
+            
+        case 'f':
+            farThreshold++;
+            break;
+            
+        case 'F':
+            farThreshold--;
+            break;
+            
 		case OF_KEY_UP:
 			angle++;
 			if(angle>30) angle=30;
